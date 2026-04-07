@@ -28,6 +28,7 @@ async function createWindow() {
         width: 1280,
         height: 800,
         backgroundColor: '#0a0a0c',
+        icon: path.join(__dirname, 'ui', 'assets', 'icon.png'),
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
         }
