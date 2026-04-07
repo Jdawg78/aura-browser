@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aura Browser</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <div id="app-shell">
+        <header id="toolbar" class="glass">
+            <div class="nav-buttons">
+                <button id="back-btn" class="nav-btn" title="Back">
+                    <i data-lucide="chevron-left"></i>
+                </button>
+                <button id="forward-btn" class="nav-btn" title="Forward">
+                    <i data-lucide="chevron-right"></i>
+                </button>
+                <button id="reload-btn" class="nav-btn" title="Reload">
+                    <i data-lucide="rotate-cw"></i>
+                </button>
+            </div>
+
+            <div class="address-container">
+                <i data-lucide="globe" class="address-icon"></i>
+                <input type="text" id="address-input" placeholder="Search or enter URL" spellcheck="false">
+            </div>
+
+            <div class="nav-buttons">
+                <button id="stealth-btn" class="nav-btn" title="Stealth Mode">
+                    <i data-lucide="shield-off"></i>
+                </button>
+                <button id="ai-toggle-btn" class="nav-btn" title="Aura AI">
+                    <i data-lucide="sparkles"></i>
+                </button>
+                <button id="menu-btn" class="nav-btn" title="Menu">
+                    <i data-lucide="menu"></i>
+                </button>
+            </div>
+        </header>
+
+        <main id="browser-viewport">
+            <!-- BrowserView will be attached here by the main process -->
+            <div id="placeholder" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--text-secondary);">
+                <i data-lucide="compass" style="width: 64px; height: 64px; margin-bottom: 24px; opacity: 0.5;"></i>
+                <h1 style="font-family: 'Outfit'; font-weight: 600; color: var(--text-primary);">Aura Browser</h1>
+                <p>Private. Local. AI-Powered.</p>
+            </div>
+        </main>
+
+        <aside id="aura-sidebar" class="glass">
+            <div class="sidebar-header">
+                <div class="sidebar-title">Aura AI</div>
+                <button id="close-sidebar-btn" class="nav-btn">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+
+            <div id="chat-messages" class="chat-container">
+                <div class="message ai animate-fade-in">
+                    Hello! I'm Aura, your local AI assistant. I can help you summarize this page, answer questions, or browse the web more efficiently.
+                </div>
+            </div>
+
+            <div id="ai-setup-wizard" class="setup-overlay glass" style="display: none;">
+                <i data-lucide="download-cloud" style="width: 48px; height: 48px; color: var(--accent-blue);"></i>
+                <h3>Local AI Setup</h3>
+                <p>Aura needs to download a small (~1.6GB) "brain" (Gemma 2B) to function offline.</p>
+                
+                <div class="progress-bar-container">
+                    <div id="setup-progress" class="progress-fill" style="width: 0%;"></div>
+                </div>
+                <div id="setup-status" style="font-size: 11px; margin-top: 8px; color: var(--text-secondary);">Ready to download.</div>
+                
+                <button id="start-setup-btn" class="nav-btn" style="background: var(--accent-blue); color: white; width: 100%; margin-top: 20px; padding: 12px;">
+                    Download & Initialize
+                </button>
+
+                <p id="repair-link" style="font-size: 10px; margin-top: 16px; cursor: pointer; text-decoration: underline; opacity: 0.5; display: none;">
+                    Already downloaded? Skip to Initialize
+                </p>
+            </div>
+
+                <input type="text" id="ai-input" placeholder="Ask Aura..." autocomplete="off">
+                <button id="send-ai-btn" class="nav-btn" style="background: var(--accent-blue); color: white;">
+                    <i data-lucide="send"></i>
+                </button>
+                <button id="stop-ai-btn" class="nav-btn" style="background: #ef4444; color: white; display: none;">
+                    <i data-lucide="square"></i>
+                </button>
+            </div>
+        </aside>
+    </div>
+
+    <script src="renderer.js"></script>
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+    </script>
+</body>
+</html>

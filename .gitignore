@@ -1,0 +1,14 @@
+# Dependencies
+node_modules/
+
+# AI Models (CRITICAL: 1.7GB file must not be uploaded)
+models/
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Electron / Build
+dist/
+release/
+*.log
