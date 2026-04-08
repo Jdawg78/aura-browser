@@ -261,5 +261,314 @@ aside#aura-sidebar.open {
   height: 100%;
   background: var(--accent-blue);
   width: 0%;
-  transition: width 0.3s ease;
 }
+
+/* --- Settings & Vault Styles --- */
+
+.sidebar-view {
+    display: none;
+    flex-direction: column;
+    flex: 1;
+    overflow-y: auto;
+    margin-top: 10px;
+}
+
+.sidebar-view.active {
+    display: flex;
+}
+
+/* Tab System */
+.settings-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.tab-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.tab-btn.active {
+    color: var(--accent-blue);
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.tab-content {
+    display: none;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.tab-content.active {
+    display: flex;
+}
+
+/* Vault Forms */
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.form-group input,
+.form-group textarea {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    padding: 10px;
+    color: var(--text-primary);
+    font-size: 14px;
+    outline: none;
+    width: 100%;
+}
+
+.form-group textarea {
+    height: 80px;
+    resize: none;
+}
+
+.nav-btn.primary {
+    background: var(--accent-blue);
+    color: white;
+    font-weight: 600;
+    padding: 12px;
+    width: 100%;
+    margin-top: 10px;
+}
+
+.vault-locked-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 40px 20px;
+    text-align: center;
+}
+
+
+/* --- Dropdown Menu --- */
+.dropdown-menu {
+    position: absolute;
+    top: calc(var(--toolbar-height) - 5px);
+    right: 16px;
+    width: 200px;
+    background: var(--bg-dark);
+    border-radius: 12px;
+    padding: 8px;
+    display: none;
+    flex-direction: column;
+    gap: 4px;
+    z-index: 1000;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    border: 1px solid var(--glass-border);
+}
+
+.dropdown-menu.active {
+    display: flex;
+}
+
+.menu-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.2s;
+    color: var(--text-secondary);
+}
+
+.menu-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+}
+
+.menu-item i {
+    width: 16px;
+    height: 16px;
+}
+
+.menu-divider {
+    height: 1px;
+    background: var(--glass-border);
+    margin: 4px 0;
+}
+
+/* --- Settings Modal --- */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal-content {
+    width: 90%;
+    max-width: 1100px;
+    height: 85vh;
+    display: flex;
+    background: var(--bg-dark);
+    border-radius: 24px;
+    overflow: hidden;
+    border: 1px solid var(--glass-border);
+    animation: modalIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes modalIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.modal-sidebar {
+    width: 240px;
+    background: rgba(255, 255, 255, 0.02);
+    border-right: 1px solid var(--glass-border);
+    padding: 32px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.modal-nav-title {
+    font-family: 'Outfit';
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 24px;
+    padding-left: 12px;
+    color: var(--text-primary);
+}
+
+.modal-nav-item {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 14px;
+    text-align: left;
+}
+
+.modal-nav-item i {
+    width: 18px;
+    height: 18px;
+}
+
+.modal-nav-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+}
+
+.modal-nav-item.active {
+    background: var(--accent-blue);
+    color: white;
+}
+
+.modal-nav-item.logout {
+    margin-top: auto;
+    color: #ef4444;
+}
+
+.modal-body {
+    flex: 1;
+    padding: 48px;
+    overflow-y: auto;
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.modal-tab-content {
+    display: none;
+    flex-direction: column;
+}
+
+.modal-tab-content.active {
+    display: flex;
+}
+
+.modal-tab-content h2 {
+    font-family: 'Outfit';
+    font-size: 28px;
+    margin-bottom: 32px;
+}
+
+.setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    margin-bottom: 16px;
+}
+
+.setting-info h3 {
+    font-size: 16px;
+    margin-bottom: 4px;
+}
+
+.setting-info p {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.glass-select, .glass-input {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--glass-border);
+    color: white;
+    padding: 10px 16px;
+    border-radius: 8px;
+    outline: none;
+}
+
+.settings-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.action-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 220px;
+}
+
+

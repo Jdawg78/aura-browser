@@ -16,14 +16,6 @@ export const BLOCKLIST = [
     '*://*.pixel.ads.com/*'
 ];
 
-// Privacy-enhancing headers
-export const PRIVACY_HEADERS = {
-    'DNT': '1', // Do Not Track
-    'Sec-GPC': '1', // Global Privacy Control
-    'X-Content-Type-Options': 'nosniff',
-    'X-Frame-Options': 'DENY'
-};
-
 /**
  * Apply the Privacy Shield to a given session
  * @param {import('electron').Session} session 
@@ -39,12 +31,31 @@ export function applyPrivacyShield(session, onBlock) {
         callback({ cancel: true });
     });
 
-    // 2. Inject Privacy Headers
+    // 2. Inject Privacy Headers & Referer Control
     session.webRequest.onBeforeSendHeaders((details, callback) => {
-        const requestHeaders = {
-            ...details.requestHeaders,
-            ...PRIVACY_HEADERS
-        };
+        const requestHeaders = { ...details.requestHeaders };
+
+        // Apply standard Privacy Headers
+        Object.assign(requestHeaders, {
+            'DNT': '1',
+            'Sec-GPC': '1'
+        });
+
+        // Referer Control: Minimize data shared with 3rd parties
+        if (requestHeaders['Referer']) {
+            try {
+                const refererUrl = new URL(requestHeaders['Referer']);
+                const targetUrl = new URL(details.url);
+
+                // If cross-origin, only send the origin, or strip if it's a known sensitive site
+                if (refererUrl.origin !== targetUrl.origin) {
+                    requestHeaders['Referer'] = refererUrl.origin + '/';
+                }
+            } catch (e) {
+                delete requestHeaders['Referer'];
+            }
+        }
+
         callback({ requestHeaders });
     });
 

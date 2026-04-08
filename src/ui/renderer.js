@@ -1,5 +1,6 @@
 // Aura Browser Renderer Logic
 
+// Core Navigation Elements
 const addressInput = document.getElementById('address-input');
 const backBtn = document.getElementById('back-btn');
 const forwardBtn = document.getElementById('forward-btn');
@@ -8,57 +9,126 @@ const stealthBtn = document.getElementById('stealth-btn');
 const aiToggleBtn = document.getElementById('ai-toggle-btn');
 const auraSidebar = document.getElementById('aura-sidebar');
 const closeSidebarBtn = document.getElementById('close-sidebar-btn');
+
+// AI Chat Elements
 const aiInput = document.getElementById('ai-input');
 const chatMessages = document.getElementById('chat-messages');
 const stopAiBtn = document.getElementById('stop-ai-btn');
 const sendAiBtn = document.getElementById('send-ai-btn');
 
-// Navigation
-addressInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-        let url = addressInput.value.trim();
-        if (!url.startsWith('http://') && !url.startsWith('https://')) {
-            url = 'https://' + url;
+// Hamburger Elements
+const menuBtn = document.getElementById('menu-btn');
+const mainMenuDropdown = document.getElementById('main-menu-dropdown');
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Re-render Lucide icons because we injected new HTML
+    if (window.lucide) {
+        window.lucide.createIcons();
+    }
+});
+
+// --- Navigation & Smart Address Bar ---
+if (addressInput) {
+    addressInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            let input = addressInput.value.trim();
+            if (!input) return;
+
+            const urlPattern = /^(https?:\/\/)?([\w.-]+\.[a-z]{2,})(\/.*)?$/i;
+            const isUrl = urlPattern.test(input) || input.startsWith('localhost') || input.includes(':/');
+
+            if (isUrl) {
+                if (!input.includes('://')) input = 'https://' + input;
+                window.electronAPI.navigate(input);
+            } else {
+                const currentEngine = window.lastSearchEngine || 'https://duckduckgo.com/?q=';
+                window.electronAPI.navigate(currentEngine + encodeURIComponent(input));
+            }
         }
-        window.electronAPI.navigate(url);
+    });
+}
+
+if (backBtn) backBtn.addEventListener('click', () => window.electronAPI.goBack());
+if (forwardBtn) forwardBtn.addEventListener('click', () => window.electronAPI.goForward());
+if (reloadBtn) reloadBtn.addEventListener('click', () => window.electronAPI.reload());
+
+// --- Sidebar Toggle ---
+if (aiToggleBtn && auraSidebar) {
+    aiToggleBtn.addEventListener('click', () => {
+        const isOpen = auraSidebar.classList.toggle('open');
+        window.electronAPI.toggleSidebar();
+    });
+}
+
+if (closeSidebarBtn && auraSidebar) {
+    closeSidebarBtn.addEventListener('click', () => {
+        auraSidebar.classList.remove('open');
+        window.electronAPI.toggleSidebar();
+    });
+}
+
+// --- Dropdown & Modal UI Logic ---
+if (menuBtn && mainMenuDropdown) {
+    menuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isActive = mainMenuDropdown.classList.toggle('active');
+        window.electronAPI.setViewVisibility(!isActive);
+    });
+}
+
+document.addEventListener('click', (e) => {
+    if (mainMenuDropdown && mainMenuDropdown.classList.contains('active')) {
+        if (!mainMenuDropdown.contains(e.target) && !menuBtn.contains(e.target)) {
+            mainMenuDropdown.classList.remove('active');
+            window.electronAPI.setViewVisibility(true);
+        }
     }
 });
 
-backBtn.addEventListener('click', () => window.electronAPI.goBack());
-forwardBtn.addEventListener('click', () => window.electronAPI.goForward());
-reloadBtn.addEventListener('click', () => window.electronAPI.reload());
+// Menu Navigation
+const menuSettings = document.getElementById('menu-settings');
+const menuVault = document.getElementById('menu-vault');
+const menuNewTab = document.getElementById('menu-new-tab');
 
-// Sidebar Toggle
-aiToggleBtn.addEventListener('click', () => {
-    console.log('Sparkle clicked! Toggling sidebar...');
-    auraSidebar.classList.toggle('open');
-    window.electronAPI.toggleSidebar(); // Inform main process to resize browser view
-});
+if (menuSettings) {
+    menuSettings.addEventListener('click', () => {
+        if (mainMenuDropdown) mainMenuDropdown.classList.remove('active');
+        window.electronAPI.setViewVisibility(true);
+        window.electronAPI.openSettings();
+    });
+}
 
-closeSidebarBtn.addEventListener('click', () => {
-    auraSidebar.classList.remove('open');
-    window.electronAPI.toggleSidebar(); // Restore browser view size
-});
+if (menuVault) {
+    menuVault.addEventListener('click', () => {
+        if (mainMenuDropdown) mainMenuDropdown.classList.remove('active');
+        window.electronAPI.setViewVisibility(true);
+        window.electronAPI.openSettings();
+    });
+}
 
-// Stealth Mode Toggle
-let isStealthMode = false;
-stealthBtn.addEventListener('click', () => {
-    isStealthMode = !isStealthMode;
-    window.electronAPI.toggleStealth(isStealthMode);
-    
-    // UI Feedback
-    if (isStealthMode) {
-        stealthBtn.style.color = 'var(--accent-purple)';
-        stealthBtn.title = 'Stealth Mode (Active)';
-        // Change icon to shield if possible, or just color
-    } else {
-        stealthBtn.style.color = 'var(--text-secondary)';
-        stealthBtn.title = 'Stealth Mode';
-    }
-});
+if (menuNewTab) {
+    menuNewTab.addEventListener('click', () => {
+        if (mainMenuDropdown) mainMenuDropdown.classList.remove('active');
+        window.electronAPI.setViewVisibility(true);
+        window.electronAPI.navigate('https://www.google.com');
+    });
+}
 
-// AI Interaction
+
+
+// --- Stealth Mode ---
+if (stealthBtn) {
+    let isStealthMode = false;
+    stealthBtn.addEventListener('click', () => {
+        isStealthMode = !isStealthMode;
+        window.electronAPI.toggleStealth(isStealthMode);
+        stealthBtn.style.color = isStealthMode ? 'var(--accent-purple)' : 'var(--text-secondary)';
+    });
+}
+
+// --- AI Chat Interaction ---
 function addMessage(text, isUser = false) {
+    if (!chatMessages) return;
     const msgDiv = document.createElement('div');
     msgDiv.className = `message ${isUser ? 'user' : 'ai'} animate-fade-in`;
     msgDiv.textContent = text;
@@ -67,14 +137,18 @@ function addMessage(text, isUser = false) {
     return msgDiv;
 }
 
-sendAiBtn.addEventListener('click', handleAiInput);
-aiInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') handleAiInput();
-});
+if (sendAiBtn) sendAiBtn.addEventListener('click', handleAiInput);
+if (aiInput) {
+    aiInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') handleAiInput();
+    });
+}
 
-stopAiBtn.addEventListener('click', () => {
-    window.electronAPI.abortAura();
-});
+if (stopAiBtn) {
+    stopAiBtn.addEventListener('click', () => {
+        window.electronAPI.abortAura();
+    });
+}
 
 let currentAiMessage = null;
 
@@ -85,49 +159,33 @@ function handleAiInput() {
     addMessage(prompt, true);
     aiInput.value = '';
 
-    // Create a new AI message placeholder
     currentAiMessage = addMessage('...', false);
-    currentAiMessage.textContent = ''; // Clear the dots
+    currentAiMessage.textContent = ''; 
 
     window.electronAPI.askAura(prompt);
     
-    // Toggle buttons
     sendAiBtn.style.display = 'none';
     stopAiBtn.style.display = 'flex';
 }
 
-// IPC Listeners
+// --- IPC Listeners ---
 window.electronAPI.onPageLoad((url) => {
-    addressInput.value = url;
+    if (addressInput) addressInput.value = url;
 });
 
-window.electronAPI.onBlockedCount((count) => {
-    const shieldBtn = document.getElementById('stealth-btn');
-    if (count > 0) {
-        shieldBtn.style.color = 'var(--accent-blue)';
-        shieldBtn.title = `Privacy Shield: ${count} trackers blocked`;
-        // Create a small badge if it doesn't exist
-        let badge = shieldBtn.querySelector('.badge');
-        if (!badge) {
-            badge = document.createElement('span');
-            badge.className = 'badge';
-            shieldBtn.appendChild(badge);
-        }
-        badge.textContent = count;
-    }
-});
+
 
 window.electronAPI.onAIResponse((chunk) => {
     if (currentAiMessage) {
         currentAiMessage.textContent += chunk;
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+        if (chatMessages) chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 });
 
 window.electronAPI.onAIFinished(() => {
     currentAiMessage = null;
-    sendAiBtn.style.display = 'flex';
-    stopAiBtn.style.display = 'none';
+    if (sendAiBtn) sendAiBtn.style.display = 'flex';
+    if (stopAiBtn) stopAiBtn.style.display = 'none';
 });
 
 // Setup Wizard Logic
@@ -135,56 +193,42 @@ const setupWizard = document.getElementById('ai-setup-wizard');
 const startSetupBtn = document.getElementById('start-setup-btn');
 const setupProgress = document.getElementById('setup-progress');
 const setupStatus = document.getElementById('setup-status');
-
 const repairLink = document.getElementById('repair-link');
 
 window.electronAPI.onAIStatus((status, err) => {
+    if (!setupWizard) return;
+    
     if (status === 'ready') {
         setupWizard.style.display = 'none';
-        auraSidebar.classList.remove('setup-mode');
     } else if (status === 'missing') {
         setupWizard.style.display = 'flex';
-        startSetupBtn.disabled = false;
-        startSetupBtn.textContent = 'Download & Initialize';
-        setupStatus.textContent = 'Brain file not found. Ready to download.';
+        if (startSetupBtn) {
+            startSetupBtn.disabled = false;
+            startSetupBtn.textContent = 'Download & Initialize';
+        }
+        if (setupStatus) setupStatus.textContent = 'Brain file not found. Ready to download.';
     } else if (status === 'loading-llama' || status === 'loading-model' || status === 'creating-context') {
         setupWizard.style.display = 'flex';
-        startSetupBtn.disabled = true;
-        startSetupBtn.textContent = 'Waking up brain...';
-        setupStatus.textContent = 'Aura is initializing (' + status.replace('loading-', '') + ')...';
+        if (startSetupBtn) {
+            startSetupBtn.disabled = true;
+            startSetupBtn.textContent = 'Waking up brain...';
+        }
+        if (setupStatus) setupStatus.textContent = 'Aura is initializing...';
     } else if (status === 'error') {
-        setupStatus.textContent = 'Aura had a hiccup: ' + err;
-        startSetupBtn.disabled = false;
-        startSetupBtn.textContent = 'Force Re-Download';
-        repairLink.style.display = 'block';
+        if (setupStatus) setupStatus.textContent = 'Aura error: ' + err;
+        if (startSetupBtn) startSetupBtn.disabled = false;
+        if (repairLink) repairLink.style.display = 'block';
     }
 });
 
-repairLink.addEventListener('click', () => {
-    setupStatus.textContent = 'Retrying initialization...';
-    repairLink.style.display = 'none';
-    window.electronAPI.downloadModel(); // In main, if file exists, it will skip download and just init
-});
-
-startSetupBtn.addEventListener('click', () => {
-    startSetupBtn.disabled = true;
-    startSetupBtn.textContent = 'Downloading...';
-    window.electronAPI.downloadModel();
-});
+if (startSetupBtn) {
+    startSetupBtn.addEventListener('click', () => {
+        startSetupBtn.disabled = true;
+        window.electronAPI.downloadModel();
+    });
+}
 
 window.electronAPI.onDownloadProgress((progress) => {
-    setupProgress.style.width = `${progress}%`;
-    setupStatus.textContent = `Downloading Brain: ${Math.round(progress)}%`;
-});
-
-window.electronAPI.onDownloadSuccess(() => {
-    setupStatus.textContent = 'Initializing Aura...';
-    // Success will be followed by ai-status: ready
-});
-
-window.electronAPI.onDownloadError((err) => {
-    startSetupBtn.disabled = false;
-    startSetupBtn.textContent = 'Retry Download';
-    setupStatus.textContent = `Error: ${err}`;
-    setupStatus.style.color = '#ef4444';
+    if (setupProgress) setupProgress.style.width = `${progress}%`;
+    if (setupStatus) setupStatus.textContent = `Downloading Brain: ${Math.round(progress)}%`;
 });

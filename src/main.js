@@ -4,13 +4,23 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { getLlama, LlamaChatSession } from 'node-llama-cpp';
 import { applyPrivacyShield } from './privacy.js';
+import { vault } from './vault.js';
 import https from 'https';
 import os from 'os';
 
-// Performance Optimizations for low-end PCs
+// Performance & Privacy Optimizations
 app.commandLine.appendSwitch('disable-gpu-vsync');
 app.commandLine.appendSwitch('disable-software-rasterizer');
 app.commandLine.appendSwitch('js-flags', '--max-old-space-size=512');
+
+// Anti-Fingerprinting Switches
+app.commandLine.appendSwitch('disable-site-isolation-trials');
+app.commandLine.appendSwitch('disable-reading-from-canvas'); // Optional but helps
+
+// Mask User-Agent to look like standard Chrome
+const CHROME_VERSION = '133.0.0.0';
+const MASKED_UA = `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${CHROME_VERSION} Safari/537.36`;
+app.userAgentFallback = MASKED_UA;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -22,6 +32,20 @@ let context;
 let chatSession;
 let abortController;
 let isSidebarOpen = false;
+let isViewVisible = true;
+
+function setViewBounds() {
+    if (!mainWindow || !browserView) return;
+    const [width, height] = mainWindow.getContentSize();
+    if (!isViewVisible) {
+        // Move off-screen instead of height: 0 to prevent Mojo/Blink crashes
+        browserView.setBounds({ x: width + 2000, y: 48, width: width, height: height - 48 });
+        return;
+    }
+    // Leave room for toolbar (48px) and potentially a bit of padding
+    const sidebarWidth = isSidebarOpen ? 320 : 0;
+    browserView.setBounds({ x: 0, y: 48, width: width - sidebarWidth, height: height - 48 });
+}
 
 async function createWindow() {
     mainWindow = new BrowserWindow({
@@ -47,18 +71,12 @@ async function createWindow() {
 
     mainWindow.setBrowserView(browserView);
     
-    // Position the BrowserView (toolbar is 48px high)
-    const setViewBounds = () => {
-        const [width, height] = mainWindow.getContentSize();
-        // Leave room for toolbar (48px) and potentially a bit of padding
-        browserView.setBounds({ x: 0, y: 48, width: width, height: height - 48 });
-    };
-
     setViewBounds();
     mainWindow.on('resize', setViewBounds);
 
-    // Initial navigation
-    browserView.webContents.loadURL('https://www.google.com');
+    // Initial navigation using user preference
+    const startupUrl = vault.getSettings().startupPage || 'https://www.google.com';
+    browserView.webContents.loadURL(startupUrl);
 
     // Apply Privacy Shield back to the session
     const currentSession = browserView.webContents.session;
@@ -104,28 +122,91 @@ ipcMain.on('toggle-stealth', (event, isEnabled) => {
     // ... (stealth logic)
 });
 
+// --- Vault & Settings IPC ---
+ipcMain.on('get-vault-status', (event) => {
+    event.reply('vault-status', {
+        isLocked: vault.isLocked,
+        useMasterPassword: vault.getSettings().useMasterPassword,
+        searchEngine: vault.getSettings().searchEngine
+    });
+});
+
+ipcMain.on('unlock-vault', (event, password) => {
+    const success = vault.unlock(password);
+    event.reply('unlock-result', success);
+    if (success) {
+        event.reply('profile-data', vault.getProfile());
+    }
+});
+
+ipcMain.on('save-profile', (event, profile) => {
+    const success = vault.updateProfile(profile);
+    event.reply('save-result', success);
+});
+
+ipcMain.on('get-profile', (event) => {
+    event.reply('profile-data', vault.getProfile());
+});
+
+ipcMain.on('set-master-password', (event, password) => {
+    vault.setMasterPassword(password);
+    event.reply('vault-status', {
+        isLocked: vault.isLocked,
+        useMasterPassword: vault.getSettings().useMasterPassword,
+        searchEngine: vault.getSettings().searchEngine
+    });
+});
+
+ipcMain.on('set-search-engine', (event, engineUrl) => {
+    const settings = vault.getSettings();
+    settings.searchEngine = engineUrl;
+    vault.save();
+    event.reply('vault-status', {
+        isLocked: vault.isLocked,
+        useMasterPassword: vault.getSettings().useMasterPassword,
+        searchEngine: vault.getSettings().searchEngine
+    });
+});
+
+ipcMain.on('fill-form', async (event) => {
+    const profile = vault.getProfile();
+    if (profile && !vault.isLocked) {
+        mainWindow.webContents.send('execute-autofill', profile);
+    }
+});
+
 ipcMain.on('toggle-sidebar', (event) => {
     isSidebarOpen = !isSidebarOpen;
-    const [width, height] = mainWindow.getContentSize();
-    const sidebarWidth = 320;
+    setViewBounds();
+});
 
-    if (isSidebarOpen) {
-        // Shrink BrowserView to make room for sidebar
-        browserView.setBounds({ 
-            x: 0, 
-            y: 48, 
-            width: width - sidebarWidth, 
-            height: height - 48 
-        });
-    } else {
-        // Expand BrowserView to fill the screen
-        browserView.setBounds({ 
-            x: 0, 
-            y: 48, 
-            width: width, 
-            height: height - 48 
-        });
+ipcMain.on('set-view-visibility', (event, isVisible) => {
+    isViewVisible = isVisible;
+    setViewBounds();
+});
+
+let settingsWindow;
+ipcMain.on('open-settings', () => {
+    if (settingsWindow) {
+        settingsWindow.focus();
+        return;
     }
+    settingsWindow = new BrowserWindow({
+        width: 800,
+        height: 600,
+        backgroundColor: '#0a0a0c',
+        autoHideMenuBar: true,
+        icon: path.join(__dirname, 'ui', 'assets', 'icon.png'),
+        webPreferences: {
+            preload: path.join(__dirname, 'preload.js'),
+        }
+    });
+
+    settingsWindow.loadFile(path.join(__dirname, 'ui', 'settings.html'));
+
+    settingsWindow.on('closed', () => {
+        settingsWindow = null;
+    });
 });
 
 // AI Logic
@@ -287,8 +368,8 @@ ipcMain.on('ask-aura', async (event, prompt) => {
 });
 
 app.whenReady().then(() => {
+    vault.load();
     createWindow();
-    // initAI is now called on did-finish-load for better sync
 });
 
 app.on('window-all-closed', () => {

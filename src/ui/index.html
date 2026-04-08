@@ -11,6 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600&display=swap" rel="stylesheet">
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="icon" type="image/png" href="assets/icon.png">
 </head>
 <body>
     <div id="app-shell">
@@ -42,6 +43,20 @@
                 <button id="menu-btn" class="nav-btn" title="Menu">
                     <i data-lucide="menu"></i>
                 </button>
+                
+                <!-- Main Menu Dropdown -->
+                <div id="main-menu-dropdown" class="glass dropdown-menu">
+                    <div class="menu-item" id="menu-new-tab">
+                        <i data-lucide="plus"></i> New Tab
+                    </div>
+                    <div class="menu-divider"></div>
+                    <div class="menu-item" id="menu-vault">
+                        <i data-lucide="lock"></i> Aura Vault
+                    </div>
+                    <div class="menu-item" id="menu-settings">
+                        <i data-lucide="settings"></i> Settings
+                    </div>
+                </div>
             </div>
         </header>
 
@@ -56,17 +71,32 @@
 
         <aside id="aura-sidebar" class="glass">
             <div class="sidebar-header">
-                <div class="sidebar-title">Aura AI</div>
+                <div id="sidebar-context-title" class="sidebar-title">Aura AI</div>
                 <button id="close-sidebar-btn" class="nav-btn">
                     <i data-lucide="x"></i>
                 </button>
             </div>
 
-            <div id="chat-messages" class="chat-container">
-                <div class="message ai animate-fade-in">
-                    Hello! I'm Aura, your local AI assistant. I can help you summarize this page, answer questions, or browse the web more efficiently.
+            <!-- AI Chat View -->
+            <div id="ai-chat-view" class="sidebar-view active">
+                <div id="chat-messages" class="chat-container">
+                    <div class="message ai animate-fade-in">
+                        Hello! I'm Aura. I can help you summarize this page, answer questions, or browse the web more efficiently.
+                    </div>
+                </div>
+
+                <div class="ai-input-container">
+                    <input type="text" id="ai-input" placeholder="Ask Aura..." autocomplete="off">
+                    <button id="send-ai-btn" class="nav-btn" style="background: var(--accent-blue); color: white;">
+                        <i data-lucide="send"></i>
+                    </button>
+                    <button id="stop-ai-btn" class="nav-btn" style="background: #ef4444; color: white; display: none;">
+                        <i data-lucide="square"></i>
+                    </button>
                 </div>
             </div>
+
+
 
             <div id="ai-setup-wizard" class="setup-overlay glass" style="display: none;">
                 <i data-lucide="download-cloud" style="width: 48px; height: 48px; color: var(--accent-blue);"></i>
@@ -86,16 +116,9 @@
                     Already downloaded? Skip to Initialize
                 </p>
             </div>
-
-                <input type="text" id="ai-input" placeholder="Ask Aura..." autocomplete="off">
-                <button id="send-ai-btn" class="nav-btn" style="background: var(--accent-blue); color: white;">
-                    <i data-lucide="send"></i>
-                </button>
-                <button id="stop-ai-btn" class="nav-btn" style="background: #ef4444; color: white; display: none;">
-                    <i data-lucide="square"></i>
-                </button>
-            </div>
         </aside>
+
+
     </div>
 
     <script src="renderer.js"></script>

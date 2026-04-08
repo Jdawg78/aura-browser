@@ -15,5 +15,22 @@
     "electron": "^41.1.1",
     "lucide-static": "^1.7.0",
     "node-llama-cpp": "^3.18.1"
+  },
+  "build": {
+    "appId": "com.aura.browser",
+    "productName": "Aura Browser",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "icon": "src/ui/assets/icon.png",
+      "target": [
+        "portable"
+      ]
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ]
   }
 }
