@@ -128,3 +128,49 @@ window.electronAPI.onSaveResult((success) => {
         setTimeout(() => mSaveProfileBtn.textContent = 'Save Identity', 2000);
     }
 });
+
+// Manage Agents
+const installModelBtns = document.querySelectorAll('.install-model-btn');
+installModelBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+        installModelBtns.forEach(b => {
+            b.textContent = 'Install & Activate';
+            b.disabled = false;
+            b.style.opacity = '1';
+        });
+
+        const url = btn.dataset.url;
+        const filename = btn.dataset.filename;
+        btn.textContent = 'Installing...';
+        btn.disabled = true;
+        btn.style.opacity = '0.5';
+        window.electronAPI.downloadModel(url, filename);
+    });
+});
+
+if (window.electronAPI.onDownloadProgress) {
+    window.electronAPI.onDownloadProgress((progress) => {
+        installModelBtns.forEach(btn => {
+            if (btn.disabled) {
+                btn.textContent = `Downloading ${Math.round(progress)}%...`;
+            }
+        });
+    });
+}
+
+if (window.electronAPI.onDownloadSuccess) {
+    window.electronAPI.onDownloadSuccess(() => {
+        installModelBtns.forEach(btn => {
+            if (btn.disabled) {
+                btn.textContent = `Active Model`;
+                btn.style.background = '#10b981'; // Green
+                btn.style.borderColor = '#059669';
+                btn.style.opacity = '1';
+                setTimeout(() => {
+                    btn.style.background = '';
+                    btn.style.borderColor = '';
+                }, 3000);
+            }
+        });
+    });
+}

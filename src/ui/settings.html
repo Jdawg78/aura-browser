@@ -36,6 +36,9 @@
             <button class="modal-nav-item" data-tab="security">
                 <i data-lucide="shield"></i> Security
             </button>
+            <button class="modal-nav-item" data-tab="ai">
+                <i data-lucide="bot"></i> Manage Agents
+            </button>
             <div style="flex:1"></div>
             <!-- Exit Settings button not needed since it's a window, could just close window -->
             <button id="close-settings-btn" class="modal-nav-item logout">
@@ -114,6 +117,32 @@
                         <input type="password" id="m-new-password" placeholder="New Password" class="glass-input">
                         <button id="m-set-password-btn" class="nav-btn">Update Password</button>
                         <button id="m-remove-password-btn" class="nav-btn danger" style="display: none;">Remove Protection</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Manage Agents Settings -->
+            <div id="modal-tab-ai" class="modal-tab-content">
+                <h2>Manage Agents (AI Models)</h2>
+                <p style="margin-bottom: 20px; opacity:0.7;">Download and activate different "Brains" for your local Aura AI. An internet connection is required for downloading models.</p>
+
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <h3>Gemma 2B (Default)</h3>
+                        <p>Fast, lightweight model capable of basic summarization and assistance.</p>
+                    </div>
+                    <div class="action-stack">
+                        <button class="nav-btn primary install-model-btn" data-url="https://huggingface.co/bartowski/gemma-2-2b-it-GGUF/resolve/main/gemma-2-2b-it-Q4_K_M.gguf" data-filename="gemma-2b-it.gguf">Install & Activate</button>
+                    </div>
+                </div>
+                
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <h3>Gemma 4V (With Vision)</h3>
+                        <p>A larger, more capable model. <strong style="color: #fbbf24;">Warning: Bigger models may run significantly slower and require much more RAM on older hardware.</strong></p>
+                    </div>
+                    <div class="action-stack">
+                        <button class="nav-btn primary install-model-btn" data-url="https://huggingface.co/bartowski/gemma-2-9b-it-GGUF/resolve/main/gemma-2-9b-it-Q4_K_M.gguf" data-filename="gemma-9b-it.gguf">Install & Activate</button>
                     </div>
                 </div>
             </div>

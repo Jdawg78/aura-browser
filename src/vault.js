@@ -18,7 +18,8 @@ class VaultManager {
                 autoFillEnabled: true,
                 useMasterPassword: false,
                 searchEngine: 'https://duckduckgo.com/?q=',
-                startupPage: 'https://www.google.com'
+                startupPage: 'https://www.google.com',
+                activeAiModel: 'gemma-2b-it.gguf'
             }
         };
         this.isLocked = false;

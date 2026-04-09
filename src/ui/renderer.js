@@ -25,12 +25,24 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window.lucide) {
         window.lucide.createIcons();
     }
+    
+    // Auto-focus the address bar when the browser UI loads
+    if (addressInput) {
+        addressInput.focus();
+        addressInput.select();
+    }
 });
 
 // --- Navigation & Smart Address Bar ---
 if (addressInput) {
+    addressInput.addEventListener('focus', () => {
+        addressInput.select();
+    });
+
     addressInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
+        if (e.key === 'Escape') {
+            addressInput.blur();
+        } else if (e.key === 'Enter') {
             let input = addressInput.value.trim();
             if (!input) return;
 
@@ -57,6 +69,9 @@ if (aiToggleBtn && auraSidebar) {
     aiToggleBtn.addEventListener('click', () => {
         const isOpen = auraSidebar.classList.toggle('open');
         window.electronAPI.toggleSidebar();
+        if (isOpen && typeof aiInput !== 'undefined' && aiInput) {
+            setTimeout(() => aiInput.focus(), 300);
+        }
     });
 }
 
@@ -110,7 +125,7 @@ if (menuNewTab) {
     menuNewTab.addEventListener('click', () => {
         if (mainMenuDropdown) mainMenuDropdown.classList.remove('active');
         window.electronAPI.setViewVisibility(true);
-        window.electronAPI.navigate('https://www.google.com');
+        window.electronAPI.newTab();
     });
 }
 
@@ -140,7 +155,12 @@ function addMessage(text, isUser = false) {
 if (sendAiBtn) sendAiBtn.addEventListener('click', handleAiInput);
 if (aiInput) {
     aiInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') handleAiInput();
+        if (e.key === 'Enter') {
+            handleAiInput();
+        } else if (e.key === 'Escape' && auraSidebar) {
+            auraSidebar.classList.remove('open');
+            window.electronAPI.toggleSidebar();
+        }
     });
 }
 
@@ -232,3 +252,97 @@ window.electronAPI.onDownloadProgress((progress) => {
     if (setupProgress) setupProgress.style.width = `${progress}%`;
     if (setupStatus) setupStatus.textContent = `Downloading Brain: ${Math.round(progress)}%`;
 });
+
+// --- Tab System UI ---
+const tabsList = document.getElementById('tabs-list');
+const addTabBtn = document.getElementById('add-tab-btn');
+
+let tabsMap = {};
+let activeRendererTabId = null;
+
+if (addTabBtn) {
+    addTabBtn.addEventListener('click', () => {
+        window.electronAPI.newTab();
+    });
+}
+
+function updateActiveTabStyles() {
+    if (!tabsList) return;
+    Array.from(tabsList.children).forEach(child => {
+        if (child.id === activeRendererTabId) {
+            child.classList.add('active');
+        } else {
+            child.classList.remove('active');
+        }
+    });
+}
+
+if (window.electronAPI.onTabCreated) {
+    window.electronAPI.onTabCreated((id) => {
+        if (!tabsList) return;
+        const tabEl = document.createElement('div');
+        tabEl.className = 'tab';
+        tabEl.id = id;
+        
+        const titleEl = document.createElement('div');
+        titleEl.className = 'tab-title';
+        titleEl.textContent = 'New Tab';
+        
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'tab-close-btn';
+        closeBtn.innerHTML = '<i data-lucide="x"></i>';
+        
+        tabEl.appendChild(titleEl);
+        tabEl.appendChild(closeBtn);
+        
+        tabEl.addEventListener('click', () => {
+            if (activeRendererTabId !== id) {
+                window.electronAPI.switchTab(id);
+            }
+        });
+        
+        closeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            window.electronAPI.closeTab(id);
+        });
+
+        tabsList.appendChild(tabEl);
+        if (window.lucide) window.lucide.createIcons({root: tabEl});
+        
+        tabsMap[id] = { element: tabEl, titleEl: titleEl, url: '' };
+    });
+}
+
+if (window.electronAPI.onTabSwitched) {
+    window.electronAPI.onTabSwitched((id) => {
+        activeRendererTabId = id;
+        updateActiveTabStyles();
+        const tab = tabsMap[id];
+        if (tab && addressInput) {
+            addressInput.value = tab.url;
+        }
+    });
+}
+
+if (window.electronAPI.onTabUpdated) {
+    window.electronAPI.onTabUpdated((data) => {
+        const tab = tabsMap[data.id];
+        if (tab) {
+            tab.url = data.url;
+            tab.titleEl.textContent = data.title || data.url || 'New Tab';
+            if (activeRendererTabId === data.id && addressInput) {
+                addressInput.value = data.url;
+            }
+        }
+    });
+}
+
+if (window.electronAPI.onTabClosed) {
+    window.electronAPI.onTabClosed((id) => {
+        const tab = tabsMap[id];
+        if (tab && tab.element.parentNode) {
+            tab.element.parentNode.removeChild(tab.element);
+        }
+        delete tabsMap[id];
+    });
+}

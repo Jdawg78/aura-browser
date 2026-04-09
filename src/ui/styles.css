@@ -52,6 +52,84 @@ header#toolbar {
   z-index: 100;
 }
 
+#tab-bar-container {
+    height: 40px;
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    background: rgba(10, 10, 12, 0.8);
+    border-bottom: 1px solid var(--glass-border);
+    gap: 4px;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+#tab-bar-container::-webkit-scrollbar {
+    display: none;
+}
+
+#tabs-list {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.tab {
+    display: flex;
+    align-items: center;
+    height: 32px;
+    padding: 0 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    min-width: 120px;
+    max-width: 200px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.tab:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.tab.active {
+    background: rgba(59, 130, 246, 0.15);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.tab-title {
+    flex: 1;
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-secondary);
+}
+
+.tab.active .tab-title {
+    color: var(--text-primary);
+}
+
+.tab-close-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    margin-left: 8px;
+}
+
+.tab-close-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #ef4444;
+}
+
 .nav-buttons {
   display: flex;
   gap: 8px;

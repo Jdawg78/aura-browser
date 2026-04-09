@@ -36,8 +36,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     abortAura: () => ipcRenderer.send('abort-aura'),
     abortAura: () => ipcRenderer.send('abort-aura'),
     toggleStealth: (isEnabled) => ipcRenderer.send('toggle-stealth', isEnabled),
-    downloadModel: () => ipcRenderer.send('download-model'),
+    downloadModel: (modelUrl, modelFilename) => ipcRenderer.send('download-model', modelUrl, modelFilename),
+    setActiveModel: (modelFilename) => ipcRenderer.send('set-active-model', modelFilename),
     openSettings: () => ipcRenderer.send('open-settings'),
+
+    // Tabs
+    newTab: (url) => ipcRenderer.send('new-tab', url),
+    switchTab: (id) => ipcRenderer.send('switch-tab', id),
+    closeTab: (id) => ipcRenderer.send('close-tab', id),
 
     // Vault & Settings
     getVaultStatus: () => ipcRenderer.send('get-vault-status'),
@@ -61,7 +67,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onDownloadSuccess: (callback) => ipcRenderer.on('download-success', (_) => callback()),
     onDownloadError: (callback) => ipcRenderer.on('download-error', (_, err) => callback(err)),
     onBlockedCount: (callback) => ipcRenderer.on('update-blocked-count', (_, count) => callback(count)),
-    onAIFinished: (callback) => ipcRenderer.on('ai-finished', (_) => callback())
+    onAIFinished: (callback) => ipcRenderer.on('ai-finished', (_) => callback()),
+    
+    // Tab Listeners
+    onTabCreated: (callback) => ipcRenderer.on('tab-created', (_, id) => callback(id)),
+    onTabUpdated: (callback) => ipcRenderer.on('tab-updated', (_, data) => callback(data)),
+    onTabClosed: (callback) => ipcRenderer.on('tab-closed', (_, id) => callback(id)),
+    onTabSwitched: (callback) => ipcRenderer.on('tab-switched', (_, id) => callback(id))
 });
 
 // --- Auto-Fill Logic ---

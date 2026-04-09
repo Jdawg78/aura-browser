@@ -25,7 +25,9 @@ app.userAgentFallback = MASKED_UA;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 let mainWindow;
-let browserView;
+let views = {};
+let activeTabId = null;
+
 let llama;
 let model;
 let context;
@@ -35,16 +37,18 @@ let isSidebarOpen = false;
 let isViewVisible = true;
 
 function setViewBounds() {
-    if (!mainWindow || !browserView) return;
+    if (!mainWindow) return;
     const [width, height] = mainWindow.getContentSize();
-    if (!isViewVisible) {
-        // Move off-screen instead of height: 0 to prevent Mojo/Blink crashes
-        browserView.setBounds({ x: width + 2000, y: 48, width: width, height: height - 48 });
-        return;
-    }
-    // Leave room for toolbar (48px) and potentially a bit of padding
     const sidebarWidth = isSidebarOpen ? 320 : 0;
-    browserView.setBounds({ x: 0, y: 48, width: width - sidebarWidth, height: height - 48 });
+    
+    Object.keys(views).forEach(id => {
+        const view = views[id];
+        if (id === activeTabId && isViewVisible) {
+            view.setBounds({ x: 0, y: 88, width: width - sidebarWidth, height: height - 88 });
+        } else {
+            view.setBounds({ x: width + 2000, y: 88, width: width, height: height - 88 });
+        }
+    });
 }
 
 async function createWindow() {
@@ -59,63 +63,119 @@ async function createWindow() {
     });
 
     mainWindow.loadFile(path.join(__dirname, 'ui', 'index.html'));
+    
+    mainWindow.on('resize', setViewBounds);
 
-    // Create BrowserView for web content
-    browserView = new BrowserView({
+    // Send AI status once the shell is ready
+    mainWindow.webContents.on('did-finish-load', () => {
+        const startupUrl = vault.getSettings().startupPage || 'https://www.google.com';
+        createNewTab(startupUrl);
+        initAI();
+    });
+}
+
+function createNewTab(urlStr) {
+    const tabId = 'tab-' + Math.random().toString(36).substr(2, 9);
+    const bv = new BrowserView({
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
             sandbox: true
         }
     });
-
-    mainWindow.setBrowserView(browserView);
     
-    setViewBounds();
-    mainWindow.on('resize', setViewBounds);
+    views[tabId] = bv;
+    mainWindow.addBrowserView(bv);
 
-    // Initial navigation using user preference
-    const startupUrl = vault.getSettings().startupPage || 'https://www.google.com';
-    browserView.webContents.loadURL(startupUrl);
-
-    // Apply Privacy Shield back to the session
-    const currentSession = browserView.webContents.session;
-    let blockedCount = 0;
+    const currentSession = bv.webContents.session;
     applyPrivacyShield(currentSession, () => {
-        blockedCount++;
-        mainWindow.webContents.send('update-blocked-count', blockedCount);
+        mainWindow.webContents.send('update-blocked-count', 1);
     });
 
-    // Sync address bar
-    browserView.webContents.on('did-navigate', (event, url) => {
-        mainWindow.webContents.send('page-load', url);
+    bv.webContents.on('did-navigate', (event, url) => {
+        if (activeTabId === tabId) mainWindow.webContents.send('page-load', url);
+        mainWindow.webContents.send('tab-updated', { id: tabId, url: url, title: bv.webContents.getTitle() });
     });
 
-    browserView.webContents.on('did-navigate-in-page', (event, url) => {
-        mainWindow.webContents.send('page-load', url);
+    bv.webContents.on('did-navigate-in-page', (event, url) => {
+        if (activeTabId === tabId) mainWindow.webContents.send('page-load', url);
+        mainWindow.webContents.send('tab-updated', { id: tabId, url: url, title: bv.webContents.getTitle() });
+    });
+    
+    bv.webContents.on('page-title-updated', (event, title) => {
+        mainWindow.webContents.send('tab-updated', { id: tabId, url: bv.webContents.getURL(), title });
     });
 
-    // Send AI status once the shell is ready
-    mainWindow.webContents.on('did-finish-load', () => {
-        initAI();
-    });
+    if (urlStr) {
+        bv.webContents.loadURL(urlStr);
+    }
+    
+    mainWindow.webContents.send('tab-created', tabId);
+    switchTab(tabId);
+    return tabId;
+}
+
+function switchTab(tabId) {
+    if (!views[tabId]) return;
+    activeTabId = tabId;
+    mainWindow.setTopBrowserView(views[tabId]);
+    setViewBounds();
+    mainWindow.webContents.send('page-load', views[tabId].webContents.getURL());
+    mainWindow.webContents.send('tab-switched', tabId);
+}
+
+function closeTab(tabId) {
+    const bv = views[tabId];
+    if (!bv) return;
+    
+    mainWindow.removeBrowserView(bv);
+    delete views[tabId];
+    
+    if (activeTabId === tabId) {
+        const remainingTabs = Object.keys(views);
+        if (remainingTabs.length > 0) {
+            switchTab(remainingTabs[remainingTabs.length - 1]);
+        } else {
+            activeTabId = null;
+            createNewTab('https://www.google.com');
+        }
+    } else {
+        setViewBounds();
+    }
+    mainWindow.webContents.send('tab-closed', tabId);
 }
 
 // IPC Handlers
 ipcMain.on('navigate', (event, url) => {
-    browserView.webContents.loadURL(url);
+    if (activeTabId && views[activeTabId]) views[activeTabId].webContents.loadURL(url);
 });
 
 ipcMain.on('go-back', () => {
-    if (browserView.webContents.canGoBack()) browserView.webContents.goBack();
+    if (activeTabId && views[activeTabId] && views[activeTabId].webContents.canGoBack()) {
+        views[activeTabId].webContents.goBack();
+    }
 });
 
 ipcMain.on('go-forward', () => {
-    if (browserView.webContents.canGoForward()) browserView.webContents.goForward();
+    if (activeTabId && views[activeTabId] && views[activeTabId].webContents.canGoForward()) {
+        views[activeTabId].webContents.goForward();
+    }
 });
 
 ipcMain.on('reload', () => {
-    browserView.webContents.reload();
+    if (activeTabId && views[activeTabId]) views[activeTabId].webContents.reload();
+});
+
+ipcMain.on('new-tab', (event, url) => {
+    createNewTab(url || 'https://www.google.com');
+});
+
+ipcMain.on('switch-tab', (event, id) => {
+    switchTab(id);
+});
+
+ipcMain.on('close-tab', (event, id) => {
+    closeTab(id);
 });
 
 ipcMain.on('toggle-stealth', (event, isEnabled) => {
@@ -212,24 +272,25 @@ ipcMain.on('open-settings', () => {
 // AI Logic
 async function initAI() {
     try {
+        const activeAiModel = vault.getSettings().activeAiModel || 'gemma-2b-it.gguf';
         const modelsDir = path.join(app.getAppPath(), 'models');
-        const modelPath = path.join(modelsDir, 'gemma-2b-it.gguf');
+        const modelPath = path.join(modelsDir, activeAiModel);
         
         console.log('[Aura Brain] Scanning path:', modelPath);
         
         if (!fs.existsSync(modelPath)) {
-            console.log('[Aura Brain] Missing model file.');
+            console.log('[Aura Brain] Missing model file:', activeAiModel);
             mainWindow.webContents.send('ai-status', 'missing');
             return;
         }
 
         mainWindow.webContents.send('ai-status', 'loading-llama');
         console.log('[Aura Brain] Waking up engine...');
-        const llama = await getLlama();
+        const llamaInstance = await getLlama();
         
         mainWindow.webContents.send('ai-status', 'loading-model');
         console.log('[Aura Brain] Loading model (Hybrid Mode)...');
-        model = await llama.loadModel({
+        model = await llamaInstance.loadModel({
             modelPath: modelPath,
             gpuLayers: 10 // Safe hybrid speedup
         });
@@ -287,20 +348,23 @@ function downloadFile(url, dest, onProgress, onFinish, onError) {
     });
 }
 
-ipcMain.on('download-model', (event) => {
+ipcMain.on('download-model', (event, modelUrl, modelFilename) => {
+    modelUrl = modelUrl || 'https://huggingface.co/bartowski/gemma-2-2b-it-GGUF/resolve/main/gemma-2-2b-it-Q4_K_M.gguf';
+    modelFilename = modelFilename || 'gemma-2b-it.gguf';
+
     const modelsDir = path.join(app.getAppPath(), 'models');
-    const dest = path.join(modelsDir, 'gemma-2b-it.gguf');
+    const dest = path.join(modelsDir, modelFilename);
 
     if (!fs.existsSync(modelsDir)) fs.mkdirSync(modelsDir, { recursive: true });
 
-    // Repair Logic: If file exists and is likely correct size, just re-init
-    if (fs.existsSync(dest) && fs.statSync(dest).size > 1500000000) {
-        console.log('Brain file exists and is correct size. Attempting repair init...');
+    if (fs.existsSync(dest) && fs.statSync(dest).size > 1000000000) {
+        console.log('Brain file exists and is likely correct size. Attempting repair init...');
+        const settings = vault.getSettings();
+        settings.activeAiModel = modelFilename;
+        vault.updateSettings(settings);
         initAI();
         return;
     }
-
-    const modelUrl = 'https://huggingface.co/bartowski/gemma-2-2b-it-GGUF/resolve/main/gemma-2-2b-it-Q4_K_M.gguf';
     
     downloadFile(
         modelUrl, 
@@ -308,10 +372,21 @@ ipcMain.on('download-model', (event) => {
         (progress) => event.reply('download-progress', progress),
         () => {
             event.reply('download-success');
+            const settings = vault.getSettings();
+            settings.activeAiModel = modelFilename;
+            vault.updateSettings(settings);
             initAI();
         },
         (err) => event.reply('download-error', err.message)
     );
+});
+
+ipcMain.on('set-active-model', (event, modelFilename) => {
+    chatSession = null; // Reset to trigger reload
+    const settings = vault.getSettings();
+    settings.activeAiModel = modelFilename;
+    vault.updateSettings(settings);
+    initAI();
 });
 
 ipcMain.on('abort-aura', () => {
@@ -322,10 +397,10 @@ ipcMain.on('abort-aura', () => {
 });
 
 ipcMain.on('ask-aura', async (event, prompt) => {
-    // Auto-init if model just appeared but session isn't ready
     if (!chatSession) {
+        const activeAiModel = vault.getSettings().activeAiModel || 'gemma-2b-it.gguf';
         const modelsDir = path.join(app.getAppPath(), 'models');
-        const modelPath = path.join(modelsDir, 'gemma-2b-it.gguf');
+        const modelPath = path.join(modelsDir, activeAiModel);
         if (fs.existsSync(modelPath)) {
             console.log('[Aura Brain] Model found during chat attempt, initializing...');
             await initAI();
@@ -339,16 +414,17 @@ ipcMain.on('ask-aura', async (event, prompt) => {
     }
 
     try {
-        // Simple page context extraction
-        const pageText = await browserView.webContents.executeJavaScript(`
-            document.body.innerText.substring(0, 2000);
-        `).catch(() => "");
+        let pageText = "";
+        if (activeTabId && views[activeTabId]) {
+            pageText = await views[activeTabId].webContents.executeJavaScript(`
+                document.body.innerText.substring(0, 2000);
+            `).catch(() => "");
+        }
 
         const enhancedPrompt = `Context from current page: "${pageText}"\n\nUser Question: ${prompt}`;
 
         abortController = new AbortController();
         
-        // Streaming response in v3
         await chatSession.prompt(enhancedPrompt, {
             signal: abortController.signal,
             onTextChunk: (chunk) => {
